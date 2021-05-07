@@ -106,7 +106,7 @@ class PhotoDrone:
         self.maxi_sobel_1 = np.amax(edge_sobel_1)
 
 
-class DronePhotosScan:
+class BlurScan:
 
     def __init__(self, photos_directory, regex):
         self.photos_directory = photos_directory
@@ -359,7 +359,7 @@ def main():
 
 
     print("Init")
-    project = DronePhotosScan(args.photos_directory, args.regex)
+    project = BlurScan(args.photos_directory, args.regex)
     print("Compute data")
     project.compute_data()
     print("check_changes")
