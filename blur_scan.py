@@ -77,35 +77,7 @@ class PhotoDrone:
                       self.percent_distance_difference,
                       self.change_distance, self.change_direction))
 
-    def compute_laplace_sobel(self):
-
-        img = Image.open(self.filename)
-
-        # square crops
-
-        # square crops
-        square_size = 400
-        # Setting the points for cropped image
-        #width, height = img.size
-
-        # Cropped image of above dimension
-        # (It will not change orginal image)
-        im1 = img.crop((0, 0, square_size, square_size))
-        #im2 = img.crop((0, height-square_size, square_size, height))
-        #im3 = img.crop((width-square_size, 0, width, square_size))
-        #im4 = img.crop((width-square_size, height-square_size, width, height))
-
-        # Edge detection
-        edge_laplace_1 = laplace(im1, ksize=3)
-        edge_sobel_1 = sobel(im1)
-
-        # Print output
-        self.vari_laplace_1 = variance(edge_laplace_1)
-        self.maxi_laplace_1 = np.amax(edge_laplace_1)
-        self.vari_sobel_1 = variance(edge_sobel_1)
-        self.maxi_sobel_1 = np.amax(edge_sobel_1)
-
-
+   
 class BlurScan:
 
     def __init__(self, photos_directory, regex):
@@ -295,11 +267,6 @@ class BlurScan:
         for tile in tiles_maps:
             folium.TileLayer(tile).add_to(the_map)
 
-        #data = []
-#        for im in self.images:
-#            data.append(
-#                [im.gps_latitude_dec, im.gps_longitude_dec, im.distance])
-#        HeatMap(data, name='Heart rate', radius=50).add_to(the_map)
         folium.LayerControl(sortLayers=False).add_to(the_map)
 
         for image in self.images:
@@ -369,7 +336,6 @@ def main():
           .format('file', 'distance', '%_dist_diff',
                   'direction', 'dir_diff', 'chg_dist', 'chg_dir'))
     for image in project.images:
-       # image.compute_laplace_sobel()
         print('{: ^50}\t{:>10.2f}\t{:>10.2f}\t{:>10.2f}\t{:>10.2f}\t{: ^8}\t{: ^8}'
               .format(image.filename, image.distance, image.percent_distance_difference,
                       image.direction, image.direction_difference,
@@ -393,7 +359,6 @@ def main():
     project.map()
 
    # from IPython import embed; embed()
-
 
 if __name__ == '__main__':
     main()
