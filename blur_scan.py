@@ -7,12 +7,6 @@ import logging
 import math
 import datetime
 from exif import Image as Image_exif
-import matplotlib.pyplot as plt
-import numpy as np
-from scipy.ndimage import variance
-from skimage.filters import laplace
-from skimage.filters import sobel
-from PIL import Image
 from geopy import distance
 import folium
 from gpxplotter import create_folium_map
@@ -64,12 +58,6 @@ class PhotoDrone:
             self.is_blurry = False
             self.first_image = False
 
-            self.vari_laplace_1 = None
-            self.maxi_laplace_1 = None
-            self.vari_sobel_1 = None
-            self.maxi_sobel_1 = None
-
-
 #            from IPython import embed; embed();sys.exit()
     def print(self):
         print('{: >20}\t{: >20}\t{: >20}\t{: >20}\t{: >10}\t{: >10}'
@@ -77,7 +65,7 @@ class PhotoDrone:
                       self.percent_distance_difference,
                       self.change_distance, self.change_direction))
 
-   
+
 class BlurScan:
 
     def __init__(self, photos_directory, regex):
@@ -183,33 +171,6 @@ class BlurScan:
                 image.first_image = True
 
             last_image = image
-
-    def map_vectors(self):
-        x_vector = []
-        y_vector = []
-        u_vector = []
-        v_vector = []
-        c_vector = []
-
-        for img in self.images:
-            x_vector.append(img.gps_longitude_dec)
-            y_vector.append(img.gps_latitude_dec)
-            if img.distance > self.average_distance*0.75:
-                u_vector.append(math.cos(math.radians((img.direction)))*img.distance)
-                v_vector.append(math.sin(math.radians((img.direction)))*img.distance)
-                c_vector.append(0)
-            else:
-                u_vector.append(math.cos(math.radians((img.direction)))*img.distance)
-                v_vector.append(math.sin(math.radians((img.direction)))*img.distance)
-                c_vector.append(10)
-
-        #fig, ax = plt.subplots()
-        _, axis = plt.subplots()
-        axis.quiver(x_vector, y_vector, u_vector, v_vector, c_vector, units='xy', scale=1)
-        #q = ax.quiver(X, Y, U, V, C, units='xy', scale=1)
-
-        plt.grid()
-        plt.show()
 
     def map(self):
 

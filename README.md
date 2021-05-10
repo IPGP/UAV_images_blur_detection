@@ -3,5 +3,8 @@ blur_scan scan a directory with a regex filter and create a list of potentially 
 <img src="https://github.com/IPGP/UAV_images_blur_detection/blob/main/map_exemple.png" width="800px" height="auto">
 
 
+# Requirements
+`pip install exif geopy gpxplotter folium scipy`
+
 # usage
 `blur_scan.py -d /directory/images -r "IMG.*JPG"`
