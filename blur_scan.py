@@ -6,11 +6,11 @@ import re
 import logging
 import math
 import datetime
-from exif import Image as Image_exif
+#from exif import Image as Image_exif
 from geopy import distance
 import folium
 from gpxplotter import create_folium_map
-
+import exiftool  
 
 DATE_FORMAT = '%Y:%m:%d %H:%M:%S'
 
@@ -21,42 +21,39 @@ class PhotoDrone:
         self.photos_directory = directory
         self.filename = directory+file
 
-# Verifier que le fichier existe
 
-    # ouvrir le fichier et lire les exifs
-        with open(self.filename, 'rb') as image_file:
-            print(self.filename)
+        print(self.filename)
 
-            image_exif = Image_exif(image_file)
-            if not image_exif.has_exif:
-                print('File {} does not have exif data'.format(image_file))
-                sys.exit()
-        #from IPython import embed; embed();sys.exit()
-            self.gps_latitude = image_exif.gps_latitude
-            self.gps_latitude_dec = image_exif.gps_latitude[0] + \
-                image_exif.gps_latitude[1]/60+image_exif.gps_latitude[2]/3600
+        # Lire les exifs fichier et lire les exifs
+        with exiftool.ExifTool() as et:
+            image_exif  = et.get_metadata(self.filename)
 
-            self.gps_longitude = image_exif.gps_longitude
-            self.gps_longitude_dec = image_exif.gps_longitude[0] + \
-                image_exif.gps_longitude[1]/60+image_exif.gps_longitude[2]/3600
+        self.gps_latitude = image_exif[ 'Composite:GPSLatitude']
+        self.gps_latitude_dec = image_exif[ 'Composite:GPSLatitude']
 
-            self.gps_altitude = image_exif.gps_altitude
+        self.gps_longitude =  image_exif[ 'Composite:GPSLongitude']
+        self.gps_longitude_dec =  image_exif[ 'Composite:GPSLongitude']
+        
+        #self.gps_altitude = image_exif[ 'Composite:GPSAltitude']
+        self.datetime_original = image_exif['EXIF:DateTimeOriginal']
+        
+       # from IPython import embed; embed();sys.exit()
 
-            self.datetime_original = image_exif.datetime_original
-            self.gps_timestamp = image_exif.datetime_original.split()[1]
-            self.epoch = datetime.datetime.strptime(
-                self.datetime_original, DATE_FORMAT).timestamp()
 
-            self.change_distance = False
-            self.change_direction = False
+        #self.gps_timestamp = image_exif.datetime_original.split()[1]
+        self.epoch = datetime.datetime.strptime(
+            self.datetime_original, DATE_FORMAT).timestamp()
 
-            self.distance = 0.0
-            self.direction = 999
-            self.direction_difference = 0.0
-            self.percent_distance_difference = 0
+        self.change_distance = False
+        self.change_direction = False
 
-            self.is_blurry = False
-            self.first_image = False
+        self.distance = 0.0
+        self.direction = 999
+        self.direction_difference = 0.0
+        self.percent_distance_difference = 0
+
+        self.is_blurry = False
+        self.first_image = False
 
 #            from IPython import embed; embed();sys.exit()
     def print(self):
@@ -113,7 +110,7 @@ class BlurScan:
                 #    (image.gps_timestamp_sec-last_image.gps_timestamp_sec)
                 last_image.direction = math.degrees(
                     math.atan2(image.delta_y, image.delta_x))
-                # print('{}\t{}\t{}\t{}'.format(
+                #print('{}\t{}\t{}\t{}'.format(
                 #    image.delta_x, image.delta_y, image.distance, image.direction))
             last_image = image
 
@@ -286,7 +283,6 @@ def main():
 #########################################################
 
 
-    print("Init")
     project = BlurScan(args.photos_directory, args.regex)
     print("Compute data")
     project.compute_data()
