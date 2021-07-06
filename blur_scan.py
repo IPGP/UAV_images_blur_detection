@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# coding: utf-8
+
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 import os
 import sys
@@ -10,7 +12,7 @@ import datetime
 from geopy import distance
 import folium
 from gpxplotter import create_folium_map
-import exiftool  
+import exiftool
 
 DATE_FORMAT = '%Y:%m:%d %H:%M:%S'
 
@@ -24,23 +26,22 @@ class PhotoDrone:
 
         print(self.filename)
 
-        # Lire les exifs fichier et lire les exifs
-        with exiftool.ExifTool() as et:
-            image_exif  = et.get_metadata(self.filename)
+        # Read exifs
+        with exiftool.ExifTool() as exifreader:
+            image_exif  = exifreader.get_metadata(self.filename)
 
         self.gps_latitude = image_exif[ 'Composite:GPSLatitude']
         self.gps_latitude_dec = image_exif[ 'Composite:GPSLatitude']
 
         self.gps_longitude =  image_exif[ 'Composite:GPSLongitude']
         self.gps_longitude_dec =  image_exif[ 'Composite:GPSLongitude']
-        
+
         #self.gps_altitude = image_exif[ 'Composite:GPSAltitude']
         self.datetime_original = image_exif['EXIF:DateTimeOriginal']
-        
+
        # from IPython import embed; embed();sys.exit()
 
 
-        #self.gps_timestamp = image_exif.datetime_original.split()[1]
         self.epoch = datetime.datetime.strptime(
             self.datetime_original, DATE_FORMAT).timestamp()
 
@@ -55,7 +56,6 @@ class PhotoDrone:
         self.is_blurry = False
         self.first_image = False
 
-#            from IPython import embed; embed();sys.exit()
     def print(self):
         print('{: >20}\t{: >20}\t{: >20}\t{: >20}\t{: >10}\t{: >10}'
               .format(self.filename, self.direction, self.distance,
@@ -281,7 +281,7 @@ def main():
     logging.basicConfig(level=loglevel)
 
 #########################################################
-
+    print("coucou")
 
     project = BlurScan(args.photos_directory, args.regex)
     print("Compute data")
