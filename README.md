@@ -4,7 +4,7 @@ blur_scan scan a directory with a regex filter and create a list of potentially 
 
 
 # Requirements
-`pip3 install exiftool geopy gpxplotter folium`
+`pip3 install geopy folium gpxplotter PyExifTool`
 
 # usage
 `blur_scan.py -d /directory/images -r "IMG.*JPG"`
