@@ -8,7 +8,6 @@ import re
 import logging
 import math
 import datetime
-#from exif import Image as Image_exif
 from geopy import distance
 import folium
 from gpxplotter import create_folium_map
