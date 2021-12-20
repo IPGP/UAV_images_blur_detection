@@ -13,10 +13,60 @@ import folium
 from gpxplotter import create_folium_map
 import exiftool
 from os import path
+from imutils import paths
+import cv2
+import numpy
 
 
 DATE_FORMAT = '%Y:%m:%d %H:%M:%S'
 
+
+
+
+def variance_of_laplacian(image):
+	# compute the Laplacian of the image and then return the focus
+	# measure, which is simply the variance of the Laplacian
+	return cv2.Laplacian(image, cv2.CV_64F).var()
+
+def compute_laplacian(image_path):
+    percentage = 2
+    # load the image, convert it to grayscale, and compute the
+    # focus measure of the image using the Variance of Laplacian
+    # method
+    image = cv2.imread(image_path)
+    #from IPython import embed; embed()
+
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    height, width, channels  = image.shape
+    crop_1 = gray[0:int(height*percentage/100), 0:int(width*5/100)]
+    crop_2 = gray[0:int(height*percentage/100), width-int(width*5/100):width]
+    crop_3 = gray[height -int(height*percentage/100):height, width-int(width*percentage/100):width]
+    crop_4 = gray[height-int(height*percentage/100):height, 0:int(width*percentage/100)]
+
+    fm_crops =[]
+    var = []
+    fm_crops.append(variance_of_laplacian(crop_1))
+    fm_crops.append(variance_of_laplacian(crop_2))
+    fm_crops.append(variance_of_laplacian(crop_3))
+    fm_crops.append(variance_of_laplacian(crop_4))
+    var.append(numpy.max(cv2.convertScaleAbs(cv2.Laplacian(crop_1,3))))
+    var.append(numpy.max(cv2.convertScaleAbs(cv2.Laplacian(crop_2,3))))
+    var.append(numpy.max(cv2.convertScaleAbs(cv2.Laplacian(crop_3,3))))
+    var.append(numpy.max(cv2.convertScaleAbs(cv2.Laplacian(crop_4,3))))
+    
+    with exiftool.ExifTool() as et:
+            metadata = et.get_metadata(filename=image_path)
+    inverse_speed = metadata['Composite:ShutterSpeed']
+    speed = int(1/inverse_speed)
+        
+    seuil = 330
+    somme_convertScaleAbs=int(var[0])+int(var[1])+int(var[2])+int(var[3])
+
+    if (int(var[0])+int(var[1])+int(var[2])+int(var[3])) < seuil:
+        text='Blurry'
+        print(F"{image_path}\tfm_crop {fm_crops[0]:.0f} {fm_crops[1]:.0f} {fm_crops[2]:.0f} {fm_crops[3]:.0f}\t convertScaleAbs: {somme_convertScaleAbs}\t speed: 1/{speed}\t{text}")
+        return 1
+    return 0
 
 class PhotoDrone:
     def __init__(self, directory, file):
@@ -86,8 +136,8 @@ class BlurScan:
         # for each picture, create an photo_drone object
         for i,file in enumerate(files):
             self.images.append(PhotoDrone(self.photos_directory + '/', file))
-            if i>255:
-                break
+            #if i>255:
+            #    break
     
         if len(files) == 0:
             print (F'{self.photos_directory} does not contains images with this REGEX {regex}')
@@ -186,11 +236,10 @@ class BlurScan:
             else:
                 # première image de la série
                 image.first_image = True
-            
-
-            
 
             previous_image = image
+
+
 
     def map(self,map_path):
 
@@ -329,15 +378,20 @@ def main():
           .format('file', 'distance', '%_dist_diff',
                   'direction', 'dir_diff', 'chg_dist', 'chg_dir'))
     count = 0
+    count_laplacian = 0
+    
     for image in project.images:
         if image.is_blurry:
-            print('{: ^20}\t{:>10.2f}\t{:>10.2f}\t{:>10.2f}\t{:>10.2f}\t{: ^8}\t{: ^8}'
-                  .format(image.file, image.distance, image.percent_distance_difference,
-                          image.direction, image.direction_difference,
-                           image.change_distance, image.change_direction))
+            #print('{: ^20}\t{:>10.2f}\t{:>10.2f}\t{:>10.2f}\t{:>10.2f}\t{: ^8}\t{: ^8}'
+            #      .format(image.file, image.distance, image.percent_distance_difference,
+            #              image.direction, image.direction_difference,
+            #               image.change_distance, image.change_direction))
+            count_laplacian += compute_laplacian(args.photos_directory+'/'+image.file)
+
             count = count+1
 
-    print(str(count) + ' images may be blurry')
+    #print(str(count) + ' images may be blurry')
+    print(str(count_laplacian) + ' images may be blurry with laplacian test')
     
     map_path = os.getcwd()
 
