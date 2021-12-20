@@ -8,25 +8,21 @@ import re
 import logging
 import math
 import datetime
-from geopy import distance
-import folium
-from gpxplotter import create_folium_map
-import exiftool
 from os import path
-from imutils import paths
-import cv2
+from geopy import distance
+import exiftool
+from cv2 import cv2
 import numpy
 
 
 DATE_FORMAT = '%Y:%m:%d %H:%M:%S'
 
 
-
-
 def variance_of_laplacian(image):
-	# compute the Laplacian of the image and then return the focus
-	# measure, which is simply the variance of the Laplacian
-	return cv2.Laplacian(image, cv2.CV_64F).var()
+    # compute the Laplacian of the image and then return the focus
+    # measure, which is simply the variance of the Laplacian
+    return cv2.Laplacian(image, cv2.CV_64F).var()
+
 
 def compute_laplacian(image_path):
     percentage = 2
@@ -37,36 +33,39 @@ def compute_laplacian(image_path):
     #from IPython import embed; embed()
 
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    height, width, channels  = image.shape
+    height, width, _ = image.shape
     crop_1 = gray[0:int(height*percentage/100), 0:int(width*5/100)]
     crop_2 = gray[0:int(height*percentage/100), width-int(width*5/100):width]
-    crop_3 = gray[height -int(height*percentage/100):height, width-int(width*percentage/100):width]
-    crop_4 = gray[height-int(height*percentage/100):height, 0:int(width*percentage/100)]
+    crop_3 = gray[height - int(height*percentage/100):height, width-int(width*percentage/100):width]
+    crop_4 = gray[height-int(height*percentage/100)
+                             :height, 0:int(width*percentage/100)]
 
-    fm_crops =[]
+    fm_crops = []
     var = []
     fm_crops.append(variance_of_laplacian(crop_1))
     fm_crops.append(variance_of_laplacian(crop_2))
     fm_crops.append(variance_of_laplacian(crop_3))
     fm_crops.append(variance_of_laplacian(crop_4))
-    var.append(numpy.max(cv2.convertScaleAbs(cv2.Laplacian(crop_1,3))))
-    var.append(numpy.max(cv2.convertScaleAbs(cv2.Laplacian(crop_2,3))))
-    var.append(numpy.max(cv2.convertScaleAbs(cv2.Laplacian(crop_3,3))))
-    var.append(numpy.max(cv2.convertScaleAbs(cv2.Laplacian(crop_4,3))))
-    
+    var.append(numpy.max(cv2.convertScaleAbs(cv2.Laplacian(crop_1, 3))))
+    var.append(numpy.max(cv2.convertScaleAbs(cv2.Laplacian(crop_2, 3))))
+    var.append(numpy.max(cv2.convertScaleAbs(cv2.Laplacian(crop_3, 3))))
+    var.append(numpy.max(cv2.convertScaleAbs(cv2.Laplacian(crop_4, 3))))
+
     with exiftool.ExifTool() as et:
-            metadata = et.get_metadata(filename=image_path)
+        metadata = et.get_metadata(filename=image_path)
     inverse_speed = metadata['Composite:ShutterSpeed']
     speed = int(1/inverse_speed)
-        
+
     seuil = 330
-    somme_convertScaleAbs=int(var[0])+int(var[1])+int(var[2])+int(var[3])
+    somme_convertScaleAbs = int(var[0])+int(var[1])+int(var[2])+int(var[3])
 
     if (int(var[0])+int(var[1])+int(var[2])+int(var[3])) < seuil:
-        text='Blurry'
-        print(F"{image_path}\tfm_crop {fm_crops[0]:.0f} {fm_crops[1]:.0f} {fm_crops[2]:.0f} {fm_crops[3]:.0f}\t convertScaleAbs: {somme_convertScaleAbs}\t speed: 1/{speed}\t{text}")
+        text = 'Blurry'
+        print(
+            F"{image_path}\tfm_crop {fm_crops[0]:.0f} {fm_crops[1]:.0f} {fm_crops[2]:.0f} {fm_crops[3]:.0f}\t convertScaleAbs: {somme_convertScaleAbs}\t speed: 1/{speed}\t{text}")
         return 1
     return 0
+
 
 class PhotoDrone:
     def __init__(self, directory, file):
@@ -74,24 +73,22 @@ class PhotoDrone:
         self.photos_directory = directory
         self.filename = directory+file
 
-
         print(self.filename)
 
         # Read exifs
         with exiftool.ExifTool() as exifreader:
-            image_exif  = exifreader.get_metadata(self.filename)
+            image_exif = exifreader.get_metadata(self.filename)
 
-        self.gps_latitude = image_exif[ 'Composite:GPSLatitude']
-        self.gps_latitude_dec = image_exif[ 'Composite:GPSLatitude']
+        self.gps_latitude = image_exif['Composite:GPSLatitude']
+        self.gps_latitude_dec = image_exif['Composite:GPSLatitude']
 
-        self.gps_longitude =  image_exif[ 'Composite:GPSLongitude']
-        self.gps_longitude_dec =  image_exif[ 'Composite:GPSLongitude']
+        self.gps_longitude = image_exif['Composite:GPSLongitude']
+        self.gps_longitude_dec = image_exif['Composite:GPSLongitude']
 
         #self.gps_altitude = image_exif[ 'Composite:GPSAltitude']
         self.datetime_original = image_exif['EXIF:DateTimeOriginal']
 
        # from IPython import embed; embed();sys.exit()
-
 
         self.epoch = datetime.datetime.strptime(
             self.datetime_original, DATE_FORMAT).timestamp()
@@ -123,7 +120,7 @@ class BlurScan:
         self.average_distance = None
 
         if len([f for f in os.listdir(self.photos_directory) if not f.startswith('.')]) == 0:
-            print('Directory {} is empty'.format(self.photos_directory))
+            print(F'Directory {self.photos_directory} is empty')
             sys.exit()
         # search all files without hidden ones
         all_files = sorted([f for f in os.listdir(
@@ -134,13 +131,14 @@ class BlurScan:
         files = [f for f in all_files if regex_filter.search(f)]
 
         # for each picture, create an photo_drone object
-        for i,file in enumerate(files):
+        for file in enumerate(files):
             self.images.append(PhotoDrone(self.photos_directory + '/', file))
-            #if i>255:
+            # if i>255:
             #    break
-    
+
         if len(files) == 0:
-            print (F'{self.photos_directory} does not contains images with this REGEX {regex}')
+            print(
+                F'{self.photos_directory} does not contains images with this REGEX {regex}')
             sys.exit(-1)
         print(len(files))
 
@@ -152,12 +150,12 @@ class BlurScan:
                 image.distance = 0.0
                 image.direction = 0.0
                # image.speed = 0.0
-                image.first_image= True
+                image.first_image = True
                 first_image = False
                 image.delta_t = 0
 
             else:
-                image.first_image= False
+                image.first_image = False
                 image.delta_x = image.gps_longitude_dec-last_image.gps_longitude_dec
                 image.delta_y = image.gps_latitude_dec-last_image.gps_latitude_dec
                 image.delta_t = image.epoch-last_image.epoch
@@ -173,7 +171,7 @@ class BlurScan:
                 #    (image.gps_timestamp_sec-last_image.gps_timestamp_sec)
                 last_image.direction = math.degrees(
                     math.atan2(image.delta_y, image.delta_x))
-                #print('{}\t{}\t{}\t{}'.format(
+                # print('{}\t{}\t{}\t{}'.format(
                 #    image.delta_x, image.delta_y, image.distance, image.direction))
             last_image = image
 
@@ -189,7 +187,8 @@ class BlurScan:
         for image in self.images:
 
             print('filename\tdistance\tdirection{}')
-            print('{}\t{}\t{}'.format(image.filename, image.distance, image.direction))
+            print('{}\t{}\t{}'.format(image.filename,
+                  image.distance, image.direction))
 
     def check_changes(self, direction_offset=40, distance_difference_limit=20):
         previous_image = False
@@ -229,7 +228,7 @@ class BlurScan:
                     image.first_image = True
 
                 # 2nd image should be not blurry. Drone is accelerating
-                if previous_image.first_image == True :
+                if previous_image.first_image :
                     image.second_image = True
                     image.is_blurry = False
 
@@ -238,87 +237,6 @@ class BlurScan:
                 image.first_image = True
 
             previous_image = image
-
-
-
-    def map(self,map_path):
-
-        the_map = create_folium_map(zoom_start=3, max_zoom=50)
-
-        # Add custom base maps to folium
-        basemaps = {
-            'Google Maps': folium.TileLayer(
-                tiles='https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
-                attr='Google',
-                name='Google Maps',
-                overlay=False,
-                control=True
-            ),
-            'Google Satellite': folium.TileLayer(
-                tiles='https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
-                attr='Google',
-                name='Google Satellite',
-                overlay=True,
-                control=True
-            ),
-            'Google Terrain': folium.TileLayer(
-                tiles='https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}',
-                attr='Google',
-                name='Google Terrain',
-                overlay=True,
-                control=True
-            ),
-            'Google Satellite Hybrid': folium.TileLayer(
-                tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
-                attr='Google',
-                name='Google Satellite',
-                overlay=True,
-                control=True
-            ),
-            'Esri Satellite': folium.TileLayer(
-                tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-                attr='Esri',
-                name='Esri Satellite',
-                overlay=True,
-                control=True
-            )
-        }
-
-        # Add custom basemaps
-        basemaps['Google Maps'].add_to(the_map)
-        basemaps['Google Satellite'].add_to(the_map)
-        basemaps['Google Terrain'].add_to(the_map)
-        basemaps['Google Satellite Hybrid'].add_to(the_map)
-        basemaps['Esri Satellite'].add_to(the_map)
-
-        tiles_maps = ['openstreetmap', 'Stamen Terrain']
-        # tiles_maps=[ 'openstreetmap',''Cartodb Positron',
-        # 'Stamen Terrain','Stamen Toner','Stamen Watercolor']
-        for tile in tiles_maps:
-            folium.TileLayer(tile).add_to(the_map)
-
-        folium.LayerControl(sortLayers=False).add_to(the_map)
-
-        for image in self.images:
-            if image.is_blurry:
-                color_image = 'darkred'
-            else:
-                color_image = 'green'
-
-            folium.Marker(
-                location=[image.gps_latitude_dec, image.gps_longitude_dec],
-                popup=image.filename,
-                # color=color_image,
-                #                icon=folium.Icon(color=color_image,icon='fas fa-camera')
-                icon=folium.Icon(color=color_image, icon='fa-map-pin')
-
-            ).add_to(the_map)
-
-        boundary = the_map.get_bounds()
-        the_map.fit_bounds(boundary, padding=(3, 3))
-
-        the_map.save(map_path+'/carte.html')
-        # sys.exit()
 
 
 def main():
@@ -342,14 +260,13 @@ def main():
     args = parser.parse_args()
 
     if not path.exists(args.photos_directory):
-        print (F'{args.photos_directory} does not exist')
+        print(F'{args.photos_directory} does not exist')
         sys.exit(-1)
-    
 
     # absolut and relative path
     if not os.path.isabs(args.photos_directory):
         args.photos_directory = os.path.abspath(args.photos_directory)
-    
+
     if args.verbose:
         loglevel = logging.DEBUG
     else:
@@ -364,9 +281,8 @@ def main():
     print("check_changes")
     project.check_changes(direction_offset=40, distance_difference_limit=20)
 
-    print('{: ^50}\t{: ^10}\t{: ^10}\t{: ^10}\t{: ^10}\t{: ^8}\t{: ^8}'
-          .format('file', 'distance', '%_dist_diff',
-                  'direction', 'dir_diff', 'chg_dist', 'chg_dir'))
+    print(F"{'file': ^50}\t{'distance': ^10}\t{'%_dist_diff': ^10}\t{'direction': ^10}\t{'dir_diff': ^10}\t{'chg_dist': ^8}\t{'chg_dir': ^8}")
+
     for image in project.images:
         print('{: ^50}\t{:>10.2f}\t{:>10.2f}\t{:>10.2f}\t{:>10.2f}\t{: ^8}\t{: ^8}'
               .format(image.filename, image.distance, image.percent_distance_difference,
@@ -379,25 +295,23 @@ def main():
                   'direction', 'dir_diff', 'chg_dist', 'chg_dir'))
     count = 0
     count_laplacian = 0
-    
+
     for image in project.images:
         if image.is_blurry:
-            #print('{: ^20}\t{:>10.2f}\t{:>10.2f}\t{:>10.2f}\t{:>10.2f}\t{: ^8}\t{: ^8}'
+            # print('{: ^20}\t{:>10.2f}\t{:>10.2f}\t{:>10.2f}\t{:>10.2f}\t{: ^8}\t{: ^8}'
             #      .format(image.file, image.distance, image.percent_distance_difference,
             #              image.direction, image.direction_difference,
             #               image.change_distance, image.change_direction))
-            count_laplacian += compute_laplacian(args.photos_directory+'/'+image.file)
+            count_laplacian += compute_laplacian(
+                args.photos_directory+'/'+image.file)
 
             count = count+1
 
     #print(str(count) + ' images may be blurry')
     print(str(count_laplacian) + ' images may be blurry with laplacian test')
-    
-    map_path = os.getcwd()
-
-    project.map(map_path)
 
    # from IPython import embed; embed()
+
 
 if __name__ == '__main__':
     main()
