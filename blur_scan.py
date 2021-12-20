@@ -12,6 +12,8 @@ from geopy import distance
 import folium
 from gpxplotter import create_folium_map
 import exiftool
+from os import path
+
 
 DATE_FORMAT = '%Y:%m:%d %H:%M:%S'
 
@@ -82,8 +84,15 @@ class BlurScan:
         files = [f for f in all_files if regex_filter.search(f)]
 
         # for each picture, create an photo_drone object
-        for file in files:
+        for i,file in enumerate(files):
             self.images.append(PhotoDrone(self.photos_directory + '/', file))
+            if i>255:
+                break
+    
+        if len(files) == 0:
+            print (F'{self.photos_directory} does not contains images with this REGEX {regex}')
+            sys.exit(-1)
+        print(len(files))
 
     def compute_data(self):
         first_image = True
@@ -93,10 +102,15 @@ class BlurScan:
                 image.distance = 0.0
                 image.direction = 0.0
                # image.speed = 0.0
+                image.first_image= True
                 first_image = False
+                image.delta_t = 0
+
             else:
+                image.first_image= False
                 image.delta_x = image.gps_longitude_dec-last_image.gps_longitude_dec
                 image.delta_y = image.gps_latitude_dec-last_image.gps_latitude_dec
+                image.delta_t = image.epoch-last_image.epoch
                 #last_image.distance = 10000*pow(pow(delta_x, 2)+pow(delta_y, 2), 0.5)
                 #image.distance = 100000*pow(pow(image.delta_x, 2)+pow(image.delta_y, 2), 0.5)
                 coords_1 = (image.gps_longitude_dec, image.gps_latitude_dec)
@@ -128,15 +142,15 @@ class BlurScan:
             print('{}\t{}\t{}'.format(image.filename, image.distance, image.direction))
 
     def check_changes(self, direction_offset=40, distance_difference_limit=20):
-        last_image = False
+        previous_image = False
 
         ##print('self.change_direction ')
         for image in self.images:
             image.percent_distance_difference = 100 * \
                 (image.distance - self.average_distance)/self.average_distance
 
-            if last_image:
-                image.direction_difference = image.direction - last_image.direction
+            if previous_image:
+                image.direction_difference = image.direction - previous_image.direction
 
                 # image.direction = 999 for the last image
                 if ((image.percent_distance_difference) < 0
@@ -158,17 +172,27 @@ class BlurScan:
 
                 # In case there is more than 10 secondes between images
                 # remove change_direction and change_distance
-                if abs(image.epoch - last_image.epoch) > 10:
-                    last_image.change_direction = False
-                    last_image.change_distance = False
+                if abs(image.epoch - previous_image.epoch) > 30:
+                    previous_image.change_direction = False
+                    previous_image.change_distance = False
                     image.is_blurry = False
+                    image.first_image = True
+
+                # 2nd image should be not blurry. Drone is accelerating
+                if previous_image.first_image == True :
+                    image.second_image = True
+                    image.is_blurry = False
+
             else:
                 # première image de la série
                 image.first_image = True
+            
 
-            last_image = image
+            
 
-    def map(self):
+            previous_image = image
+
+    def map(self,map_path):
 
         the_map = create_folium_map(zoom_start=3, max_zoom=50)
 
@@ -244,7 +268,7 @@ class BlurScan:
         boundary = the_map.get_bounds()
         the_map.fit_bounds(boundary, padding=(3, 3))
 
-        the_map.save(self.photos_directory+'/carte.html')
+        the_map.save(map_path+'/carte.html')
         # sys.exit()
 
 
@@ -255,7 +279,6 @@ def main():
 
     parser.add_argument('-d', '--photos_directory', type=str, required=True,
                         help='The directory where drones pictures are. default is pwd')
-    # default=os.getcwd())
 
     parser.add_argument('-r', '--regex',  type=str, required=False,
                         help='Regex expression to filter images. \
@@ -269,10 +292,15 @@ def main():
     # parse the arguments
     args = parser.parse_args()
 
+    if not path.exists(args.photos_directory):
+        print (F'{args.photos_directory} does not exist')
+        sys.exit(-1)
+    
+
     # absolut and relative path
     if not os.path.isabs(args.photos_directory):
         args.photos_directory = os.path.abspath(args.photos_directory)
-
+    
     if args.verbose:
         loglevel = logging.DEBUG
     else:
@@ -280,7 +308,6 @@ def main():
     logging.basicConfig(level=loglevel)
 
 #########################################################
-    print("coucou")
 
     project = BlurScan(args.photos_directory, args.regex)
     print("Compute data")
@@ -311,8 +338,10 @@ def main():
             count = count+1
 
     print(str(count) + ' images may be blurry')
+    
+    map_path = os.getcwd()
 
-    project.map()
+    project.map(map_path)
 
    # from IPython import embed; embed()
 
