@@ -86,8 +86,8 @@ class BlurScan:
         # for each picture, create an photo_drone object
         for i,file in enumerate(files):
             self.images.append(PhotoDrone(self.photos_directory + '/', file))
-            if i>255:
-                break
+            #if i>255:
+            #    break
     
         if len(files) == 0:
             print (F'{self.photos_directory} does not contains images with this REGEX {regex}')
