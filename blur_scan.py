@@ -129,10 +129,10 @@ class BlurScan:
         # filter with regex
         regex_filter = re.compile(regex, re.MULTILINE)
         files = [f for f in all_files if regex_filter.search(f)]
-
+	
         # for each picture, create an photo_drone object
         for file in enumerate(files):
-            self.images.append(PhotoDrone(self.photos_directory + '/', file))
+            self.images.append(PhotoDrone(self.photos_directory + '/', file[1]))
             # if i>255:
             #    break
 
