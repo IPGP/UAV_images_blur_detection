@@ -61,8 +61,7 @@ def compute_laplacian(image_path):
 
     if (int(var[0])+int(var[1])+int(var[2])+int(var[3])) < seuil:
         text = 'Blurry'
-        print(
-            F"{image_path}\tfm_crop {fm_crops[0]:.0f} {fm_crops[1]:.0f} {fm_crops[2]:.0f} {fm_crops[3]:.0f}\t convertScaleAbs: {somme_convertScaleAbs}\t speed: 1/{speed}\t{text}")
+        print(F"{image_path}\tfm_crop {fm_crops[0]:.0f} {fm_crops[1]:.0f} {fm_crops[2]:.0f} {fm_crops[3]:.0f}\t convertScaleAbs: {somme_convertScaleAbs}\t speed: 1/{speed}\t{text}")
         return 1
     return 0
 
