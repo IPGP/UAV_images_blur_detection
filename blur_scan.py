@@ -280,18 +280,18 @@ def main():
     print("check_changes")
     project.check_changes(direction_offset=40, distance_difference_limit=20)
 
-    print(F"{'file': ^50}\t{'distance': ^10}\t{'%_dist_diff': ^10}\t{'direction': ^10}\t{'dir_diff': ^10}\t{'chg_dist': ^8}\t{'chg_dir': ^8}")
+    print(F"{'file': ^90}\t{'distance': ^10}\t{'%_dist_diff': ^10}\t{'direction': ^10}\t{'dir_diff': ^10}\t{'chg_dist': ^8}\t{'chg_dir': ^8}")
 
     for image in project.images:
-        print('{: ^50}\t{:>10.2f}\t{:>10.2f}\t{:>10.2f}\t{:>10.2f}\t{: ^8}\t{: ^8}'
+        print('{: ^90}\t{:>10.2f}\t{:>10.2f}\t{:>10.2f}\t{:>10.2f}\t{: ^8}\t{: ^8}'
               .format(image.filename, image.distance, image.percent_distance_difference,
                       image.direction, image.direction_difference,
                       image.change_distance, image.change_direction))
 
     print('The following images may be blurry')
-    print('{: ^20}\t{: ^10}\t{: ^10}\t{: ^10}\t{: ^10}\t{: ^8}\t{: ^8}'
-          .format('file', 'distance', '%_dist_diff',
-                  'direction', 'dir_diff', 'chg_dist', 'chg_dir'))
+    #print('{: ^90}\t{: ^10}\t{: ^10}\t{: ^10}\t{: ^10}\t{: ^8}\t{: ^8}'
+    #      .format('file', 'distance', '%_dist_diff',
+    #              'direction', 'dir_diff', 'chg_dist', 'chg_dir'))
     count = 0
     count_laplacian = 0
 
