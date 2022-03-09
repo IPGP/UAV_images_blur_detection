@@ -1,4 +1,4 @@
+numpy==1.22.3
 geopy==2.1.0
-folium==0.12.1
-gpxplotter==0.2.9
 PyExifTool==0.4.9
+opencv_python==4.4.0.46
