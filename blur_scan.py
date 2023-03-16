@@ -8,12 +8,11 @@ import logging
 import math
 import datetime
 from os import path, getcwd,listdir
+import dataclasses
 from geopy import distance
 import exiftool
 import cv2
 import numpy
-from os.path import basename,dirname
-
 
 DATE_FORMAT = '%Y:%m:%d %H:%M:%S'
 
@@ -51,36 +50,41 @@ def compute_laplacian(photodrone):
     var.append(numpy.max(cv2.convertScaleAbs(cv2.Laplacian(crop_3, 3))))
     var.append(numpy.max(cv2.convertScaleAbs(cv2.Laplacian(crop_4, 3))))
 
-  
     inverse_speed = photodrone.metadata['Composite:ShutterSpeed']
     speed = int(1/inverse_speed)
 
     seuil = 330
-    somme_convertScaleAbs = int(var[0])+int(var[1])+int(var[2])+int(var[3])
+    somme_convert_scale_abs = int(var[0])+int(var[1])+int(var[2])+int(var[3])
 
     if (int(var[0])+int(var[1])+int(var[2])+int(var[3])) < seuil:
         text = 'Blurry'
-        print(F"{photodrone.filename}\tfm_crop {fm_crops[0]:.0f} {fm_crops[1]:.0f} {fm_crops[2]:.0f} {fm_crops[3]:.0f}\t convertScaleAbs: {somme_convertScaleAbs}\t speed: 1/{speed}\t{text}")
+        print(F'{photodrone.filename}\tfm_crop {fm_crops[0]:.0f} {fm_crops[1]:.0f}'
+        f'{fm_crops[2]:.0f} {fm_crops[3]:.0f}\t convertScaleAbs: '
+        f'{somme_convert_scale_abs}\t speed: 1/{speed}\t{text}')
         return 1
     return 0
 
 
+@dataclasses.dataclass
 class PhotoDrone:
-    def __init__(self, directory, file,metadata):
-        self.file = file
-        self.photos_directory = directory
-        self.filename = directory+file
-        self.metadata = metadata
-        print(f'PhotoDrone self.file {self.file} self.photos_directory {self.photos_directory} self.filename {self.filename}')
+    photos_directory: str
+    file:str
+    metadata: dict
 
-        self.gps_latitude = metadata['Composite:GPSLatitude']
-        self.gps_latitude_dec = metadata['Composite:GPSLatitude']
+    def __post_init__(self):
+        self.filename = self.photos_directory+self.file
 
-        self.gps_longitude = metadata['Composite:GPSLongitude']
-        self.gps_longitude_dec = metadata['Composite:GPSLongitude']
+        print(f'PhotoDrone self.file {self.file} self.photos_directory '
+              f'{self.photos_directory} self.filename {self.filename}')
+
+        self.gps_latitude = self.metadata['Composite:GPSLatitude']
+        self.gps_latitude_dec = self.metadata['Composite:GPSLatitude']
+
+        self.gps_longitude = self.metadata['Composite:GPSLongitude']
+        self.gps_longitude_dec = self.metadata['Composite:GPSLongitude']
 
         #self.gps_altitude = image_exif[ 'Composite:GPSAltitude']
-        self.datetime_original = metadata['EXIF:DateTimeOriginal']
+        self.datetime_original = self.metadata['EXIF:DateTimeOriginal']
 
        # from IPython import embed; embed();sys.exit()
 
@@ -99,10 +103,9 @@ class PhotoDrone:
         self.first_image = False
 
     def print(self):
-        print('{: >20}\t{: >20}\t{: >20}\t{: >20}\t{: >10}\t{: >10}'
-              .format(self.filename, self.direction, self.distance,
-                      self.percent_distance_difference,
-                      self.change_distance, self.change_direction))
+        print(f"{self.filename: >20}\t{self.direction: >20}\t{self.distance: >20}"
+              f"\t{self.percent_distance_difference: >20}\t{self.change_distance: >10}"
+              f"\t{self.change_direction: >10}")
 
 
 class BlurScan:
@@ -128,7 +131,7 @@ class BlurScan:
         # if photos_directory with regex is empty exit
         if not files:
             print(f'{self.photos_directory} with {regex} regex does not contain any image')
-            exit(-1)
+            sys.exit(-1)
 
 #        __import__("IPython").embed()
 #        exit()
@@ -199,8 +202,7 @@ class BlurScan:
         for image in self.images:
 
             print('filename\tdistance\tdirection{}')
-            print('{}\t{}\t{}'.format(image.filename,
-                  image.distance, image.direction))
+            print(f'{image.filename}\t{image.distance}\t{image.direction}')
 
     def check_changes(self, direction_offset=40, distance_difference_limit=20):
         previous_image = False
@@ -299,7 +301,8 @@ def main():
     print("check_changes")
     project.check_changes(direction_offset=40, distance_difference_limit=20)
 
-    print(F"{'file': ^90}\t{'distance': ^10}\t{'%_dist_diff': ^10}\t{'direction': ^10}\t{'dir_diff': ^10}\t{'chg_dist': ^8}\t{'chg_dir': ^8}")
+    print(f"{'file': ^90}\t{'distance': ^10}\t{'%_dist_diff': ^10}\t"
+          "{'direction': ^10}\t{'dir_diff': ^10}\t{'chg_dist': ^8}\t{'chg_dir': ^8}")
 
     for image in project.images:
 #        print('{: ^90}\t{:>10.2f}\t{:>10.2f}\t{:>10.2f}\t{:>10.2f}\t{: ^8}\t{: ^8}'
@@ -307,10 +310,10 @@ def main():
 #                      image.direction, image.direction_difference,
 #                      image.change_distance, image.change_direction))
 
-        print('{: ^90}\t{:>10.2f}\t{:>10.2f}\t{:>10.2f}\t{:>10.2f}\t{: ^8}\t{: ^8}'
-              .format(image.filename, image.distance, image.percent_distance_difference,
-                      image.direction, image.direction_difference,
-                      image.change_distance, image.change_direction))
+        print(f'{image.filename: ^90}\t{image.distance:>10.2f}\t'
+        f'{image.percent_distance_difference:>10.2f}\t{image.direction:>10.2f}'
+        f'\t{image.direction_difference:>10.2f}\t{image.change_distance: ^8}\t'
+        f'{image.change_direction: ^8}')
 
 
     print('The following images may be blurry')

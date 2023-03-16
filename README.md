@@ -6,4 +6,6 @@ blur_scan scan a directory with a regex filter and create a list of potentially 
 # Requirements
 `pip install -r requirements.txt`
 # usage
-`blur_scan.py -d /directory/images -r "IMG.*JPG"`
+`blur_scan.py  /directory/images -r "IMG.*JPG"`
+or
+`blur_scan.py  `
