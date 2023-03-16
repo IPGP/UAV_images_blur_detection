@@ -2,17 +2,17 @@
 # coding: utf-8
 
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-import os
 import sys
 import re
 import logging
 import math
 import datetime
-from os import path
+from os import path, getcwd,listdir
 from geopy import distance
 import exiftool
-from cv2 import cv2
+import cv2
 import numpy
+from os.path import basename,dirname
 
 
 DATE_FORMAT = '%Y:%m:%d %H:%M:%S'
@@ -24,12 +24,12 @@ def variance_of_laplacian(image):
     return cv2.Laplacian(image, cv2.CV_64F).var()
 
 
-def compute_laplacian(image_path):
+def compute_laplacian(photodrone):
     percentage = 2
     # load the image, convert it to grayscale, and compute the
     # focus measure of the image using the Variance of Laplacian
     # method
-    image = cv2.imread(image_path)
+    image = cv2.imread(photodrone.filename)
     #from IPython import embed; embed()
 
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -51,9 +51,8 @@ def compute_laplacian(image_path):
     var.append(numpy.max(cv2.convertScaleAbs(cv2.Laplacian(crop_3, 3))))
     var.append(numpy.max(cv2.convertScaleAbs(cv2.Laplacian(crop_4, 3))))
 
-    with exiftool.ExifTool() as et:
-        metadata = et.get_metadata(filename=image_path)
-    inverse_speed = metadata['Composite:ShutterSpeed']
+  
+    inverse_speed = photodrone.metadata['Composite:ShutterSpeed']
     speed = int(1/inverse_speed)
 
     seuil = 330
@@ -61,31 +60,27 @@ def compute_laplacian(image_path):
 
     if (int(var[0])+int(var[1])+int(var[2])+int(var[3])) < seuil:
         text = 'Blurry'
-        print(F"{image_path}\tfm_crop {fm_crops[0]:.0f} {fm_crops[1]:.0f} {fm_crops[2]:.0f} {fm_crops[3]:.0f}\t convertScaleAbs: {somme_convertScaleAbs}\t speed: 1/{speed}\t{text}")
+        print(F"{photodrone.filename}\tfm_crop {fm_crops[0]:.0f} {fm_crops[1]:.0f} {fm_crops[2]:.0f} {fm_crops[3]:.0f}\t convertScaleAbs: {somme_convertScaleAbs}\t speed: 1/{speed}\t{text}")
         return 1
     return 0
 
 
 class PhotoDrone:
-    def __init__(self, directory, file):
+    def __init__(self, directory, file,metadata):
         self.file = file
         self.photos_directory = directory
         self.filename = directory+file
+        self.metadata = metadata
+        print(f'PhotoDrone self.file {self.file} self.photos_directory {self.photos_directory} self.filename {self.filename}')
 
-        print(self.filename)
+        self.gps_latitude = metadata['Composite:GPSLatitude']
+        self.gps_latitude_dec = metadata['Composite:GPSLatitude']
 
-        # Read exifs
-        with exiftool.ExifTool() as exifreader:
-            image_exif = exifreader.get_metadata(self.filename)
-
-        self.gps_latitude = image_exif['Composite:GPSLatitude']
-        self.gps_latitude_dec = image_exif['Composite:GPSLatitude']
-
-        self.gps_longitude = image_exif['Composite:GPSLongitude']
-        self.gps_longitude_dec = image_exif['Composite:GPSLongitude']
+        self.gps_longitude = metadata['Composite:GPSLongitude']
+        self.gps_longitude_dec = metadata['Composite:GPSLongitude']
 
         #self.gps_altitude = image_exif[ 'Composite:GPSAltitude']
-        self.datetime_original = image_exif['EXIF:DateTimeOriginal']
+        self.datetime_original = metadata['EXIF:DateTimeOriginal']
 
        # from IPython import embed; embed();sys.exit()
 
@@ -118,20 +113,38 @@ class BlurScan:
         self.images_nb = None
         self.average_distance = None
 
-        if len([f for f in os.listdir(self.photos_directory) if not f.startswith('.')]) == 0:
+        if len([f for f in listdir(self.photos_directory) if not f.startswith('.')]) == 0:
             print(F'Directory {self.photos_directory} is empty')
             sys.exit()
         # search all files without hidden ones
-        all_files = sorted([f for f in os.listdir(
+        all_files = sorted([f for f in listdir(
             self.photos_directory) if not f.startswith('.')])
 
         # filter with regex
         regex_filter = re.compile(regex, re.MULTILINE)
         files = [f for f in all_files if regex_filter.search(f)]
-	
+        files_with_dir = [self.photos_directory+'/'+f for f in all_files if regex_filter.search(f)]
+
+        # if photos_directory with regex is empty exit
+        if not files:
+            print(f'{self.photos_directory} with {regex} regex does not contain any image')
+            exit(-1)
+
+#        __import__("IPython").embed()
+#        exit()
+
+        print("Reading metadata...")
+        # Read exif all images
+        with exiftool.ExifToolHelper() as exifreader:
+            images_exif = exifreader.get_metadata(files_with_dir)
+        #__import__("IPython").embed()
+        #exit()
+
+
         # for each picture, create an photo_drone object
-        for file in enumerate(files):
-            self.images.append(PhotoDrone(self.photos_directory + '/', file[1]))
+       # for file in enumerate(files):
+        for file, metadata in zip(files, images_exif):
+            self.images.append(PhotoDrone(self.photos_directory + '/', file,metadata))
             # if i>255:
             #    break
 
@@ -243,8 +256,12 @@ def main():
                             description='Scan Drones pictures to detect blurry ones',
                             formatter_class=ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument('-d', '--photos_directory', type=str, required=True,
-                        help='The directory where drones pictures are. default is pwd')
+    #parser.add_argument('-d', '--photos_directory', type=str, required=True,
+    #                    help='Directory where drones pictures are. default is pwd')
+    parser.add_argument(
+        'photos_directory', nargs='?', default=getcwd(),
+        help="Directory where drones pictures are. default is pwd")
+
 
     parser.add_argument('-r', '--regex',  type=str, required=False,
                         help='Regex expression to filter images. \
@@ -258,13 +275,15 @@ def main():
     # parse the arguments
     args = parser.parse_args()
 
+    print(f'args.photos_directory {args.photos_directory}')
+
     if not path.exists(args.photos_directory):
         print(F'{args.photos_directory} does not exist')
         sys.exit(-1)
 
     # absolut and relative path
-    if not os.path.isabs(args.photos_directory):
-        args.photos_directory = os.path.abspath(args.photos_directory)
+    if not path.isabs(args.photos_directory):
+        args.photos_directory = path.abspath(args.photos_directory)
 
     if args.verbose:
         loglevel = logging.DEBUG
@@ -283,10 +302,16 @@ def main():
     print(F"{'file': ^90}\t{'distance': ^10}\t{'%_dist_diff': ^10}\t{'direction': ^10}\t{'dir_diff': ^10}\t{'chg_dist': ^8}\t{'chg_dir': ^8}")
 
     for image in project.images:
+#        print('{: ^90}\t{:>10.2f}\t{:>10.2f}\t{:>10.2f}\t{:>10.2f}\t{: ^8}\t{: ^8}'
+#              .format(image.filename, image.distance, image.percent_distance_difference,
+#                      image.direction, image.direction_difference,
+#                      image.change_distance, image.change_direction))
+
         print('{: ^90}\t{:>10.2f}\t{:>10.2f}\t{:>10.2f}\t{:>10.2f}\t{: ^8}\t{: ^8}'
               .format(image.filename, image.distance, image.percent_distance_difference,
                       image.direction, image.direction_difference,
                       image.change_distance, image.change_direction))
+
 
     print('The following images may be blurry')
     #print('{: ^90}\t{: ^10}\t{: ^10}\t{: ^10}\t{: ^10}\t{: ^8}\t{: ^8}'
@@ -301,8 +326,7 @@ def main():
             #      .format(image.file, image.distance, image.percent_distance_difference,
             #              image.direction, image.direction_difference,
             #               image.change_distance, image.change_direction))
-            count_laplacian += compute_laplacian(
-                args.photos_directory+'/'+image.file)
+            count_laplacian += compute_laplacian(image)
 
             count = count+1
 
