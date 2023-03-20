@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Detect potential blurry images from the path of an UAV
+"""
 # coding: utf-8
 
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
@@ -15,38 +17,35 @@ import cv2
 import numpy
 
 DATE_FORMAT = '%Y:%m:%d %H:%M:%S'
+PERCENTAGE = 2
 
 
 def variance_of_laplacian(image):
-    # compute the Laplacian of the image and then return the focus
-    # measure, which is simply the variance of the Laplacian
+    """compute the Laplacian of the image and then return the focus
+    measure, which is simply the variance of the Laplacian"""
     return cv2.Laplacian(image, cv2.CV_64F).var()
 
 
 def compute_laplacian(photodrone):
-    percentage = 2
-    # load the image, convert it to grayscale, and compute the
-    # focus measure of the image using the Variance of Laplacian
-    # method
+    """load the image, convert it to grayscale, and compute the
+    ocus measure of the image using the Variance of Laplacian
+    method"""
     image = cv2.imread(photodrone.filename)
     #from IPython import embed; embed()
 
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     height, width, _ = image.shape
-    crop_1 = gray[0:int(height*percentage/100), 0:int(width*5/100)]
-    crop_2 = gray[0:int(height*percentage/100), width-int(width*5/100):width]
-    crop_3 = gray[height - int(height*percentage/100):height, width-int(width*percentage/100):width]
-    crop_4 = gray[height-int(height*percentage/100)
-                             :height, 0:int(width*percentage/100)]
+    crop_1 = gray[0:int(height*PERCENTAGE/100), 0:int(width*5/100)]
+    crop_2 = gray[0:int(height*PERCENTAGE/100), width-int(width*5/100):width]
+    crop_3 = gray[height - int(height*PERCENTAGE/100):height, width-int(width*PERCENTAGE/100):width]
+    crop_4 = gray[height-int(height*PERCENTAGE/100)
+                             :height, 0:int(width*PERCENTAGE/100)]
 
-    fm_crops = []
-    var = []
-    fm_crops.append(variance_of_laplacian(crop_1))
-    fm_crops.append(variance_of_laplacian(crop_2))
+    fm_crops = [ (variance_of_laplacian(crop_1)), (variance_of_laplacian(crop_2))]
     fm_crops.append(variance_of_laplacian(crop_3))
     fm_crops.append(variance_of_laplacian(crop_4))
-    var.append(numpy.max(cv2.convertScaleAbs(cv2.Laplacian(crop_1, 3))))
-    var.append(numpy.max(cv2.convertScaleAbs(cv2.Laplacian(crop_2, 3))))
+
+    var = [(numpy.max(cv2.convertScaleAbs(cv2.Laplacian(crop_1, 3)))),(numpy.max(cv2.convertScaleAbs(cv2.Laplacian(crop_2, 3))))]
     var.append(numpy.max(cv2.convertScaleAbs(cv2.Laplacian(crop_3, 3))))
     var.append(numpy.max(cv2.convertScaleAbs(cv2.Laplacian(crop_4, 3))))
 
@@ -67,6 +66,7 @@ def compute_laplacian(photodrone):
 
 @dataclasses.dataclass
 class PhotoDrone:
+    """Describe an UAV photo with its metadata"""
     photos_directory: str
     file:str
     metadata: dict
@@ -77,11 +77,8 @@ class PhotoDrone:
         print(f'PhotoDrone self.file {self.file} self.photos_directory '
               f'{self.photos_directory} self.filename {self.filename}')
 
-        self.gps_latitude = self.metadata['Composite:GPSLatitude']
-        self.gps_latitude_dec = self.metadata['Composite:GPSLatitude']
-
-        self.gps_longitude = self.metadata['Composite:GPSLongitude']
         self.gps_longitude_dec = self.metadata['Composite:GPSLongitude']
+        self.gps_latitude_dec = self.metadata['Composite:GPSLatitude']
 
         #self.gps_altitude = image_exif[ 'Composite:GPSAltitude']
         self.datetime_original = self.metadata['EXIF:DateTimeOriginal']
@@ -196,7 +193,7 @@ class BlurScan:
         #     sum(im.speed for im in self.images))/self.images_nb
         self.average_distance = sum(
             im.distance for im in self.images)/self.images_nb
-        print("Average_distance " + str(self.average_distance))
+        print(f"Average_distance {str(self.average_distance)}")
 
     def print_values(self):
         for image in self.images:
